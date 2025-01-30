@@ -1,0 +1,173 @@
+---
+title: "sok-1005 oppgave"
+author: "simon"
+format: html
+editor: visual
+---
+
+## Assignment 1 - SOK-1005
+
+```{r, warning=FALSE}
+
+rm(list=ls())
+
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+
+# Loading and reading data
+
+url_lower_troposphere <- "http://vortex.nsstc.uah.edu/data/msu/v6.1/tlt/uahncdc_lt_6.1.txt"
+
+url_mid_troposphere <- "http://vortex.nsstc.uah.edu/data/msu/v6.1/tmt/uahncdc_mt_6.1.txt"
+
+url_tropopause <- "http://vortex.nsstc.uah.edu/data/msu/v6.1/ttp/uahncdc_tp_6.1.txt"
+
+url_lower_stratosphere <- "http://vortex.nsstc.uah.edu/data/msu/v6.1/tls/uahncdc_ls_6.1.txt"
+
+
+lower_troposphere_data <- read.table(url_lower_troposphere, header = TRUE, fill = TRUE)
+
+mid_troposphere_data <- read.table(url_mid_troposphere, header = TRUE, fill = TRUE)
+
+tropopause_data <- read.table(url_tropopause, header = TRUE, fill = TRUE)
+
+lower_stratosphere_data <- read.table(url_lower_stratosphere, header = TRUE, fill = TRUE)
+
+```
+
+```{r}
+
+#Selecting and modifying the data we need
+
+lower_stratosphere_data <- lower_stratosphere_data %>% 
+  select(1,3) %>% 
+  filter(Year %in% c(1980:2024)) %>% 
+  mutate(Globe = as.numeric(Globe)) %>% 
+  mutate(Year = as.numeric(Year))
+
+lower_troposphere_data <- lower_troposphere_data %>% 
+  select(1,3) %>% 
+  filter(Year %in% c(1980:2024)) %>% 
+  mutate(Globe = as.numeric(Globe)) %>% 
+  mutate(Year = as.numeric(Year))
+
+mid_troposphere_data <- mid_troposphere_data %>% 
+  select(1,3) %>% 
+  filter(Year %in% c(1980:2024)) %>% 
+  mutate(Globe = as.numeric(Globe)) %>% 
+  mutate(Year = as.numeric(Year))
+
+tropopause_data <- tropopause_data %>% 
+  select(1,3) %>% 
+  filter(Year %in% c(1980:2024)) %>% 
+  mutate(Globe = as.numeric(Globe)) %>% 
+  mutate(Year = as.numeric(Year))
+```
+
+```{r}
+
+# Calculating the average for every year 
+
+lower_stratosphere_data <- lower_stratosphere_data %>% 
+  group_by(Year) %>% 
+  summarise(Lower_stratosphere = mean(Globe, na.rm = TRUE))
+
+lower_troposphere_data <- lower_troposphere_data %>% 
+  group_by(Year) %>% 
+  summarise(Lower_troposphere = mean(Globe, na.rm = TRUE))
+
+mid_troposphere_data <- mid_troposphere_data %>% 
+  group_by(Year) %>% 
+  summarise(Mid_troposphere = mean(Globe, na.rm = TRUE))
+
+tropopause_data <- tropopause_data %>% 
+  group_by(Year) %>% 
+  summarise(Tropopause = mean(Globe, na.rm = TRUE))
+```
+
+```{r}
+
+#Combining all the data to one dataframe
+
+combined_data <- lower_stratosphere_data %>%
+  inner_join(lower_troposphere_data, by = "Year") %>%
+  inner_join(mid_troposphere_data, by = "Year") %>%
+  inner_join(tropopause_data, by = "Year")
+```
+
+```{r}
+
+#Adding the variables to one collum
+
+combined_data <- combined_data %>%
+  pivot_longer(cols = -Year,
+               names_to = "Variable",
+               values_to = "Average")
+
+#Calculating the average between the four temperatures
+
+combined_data <-combined_data %>% 
+  group_by(Year) %>%
+  mutate(Overall_Average = mean(Average, na.rm = TRUE))
+```
+
+```{r}
+
+# Ploting a lineplot of the four yearly averages in temperature
+
+combined_data %>% 
+  
+  ggplot(aes(x = Year, y = Average, color = Variable, group = Variable))+
+  
+  facet_wrap(~Variable) +
+  
+  geom_line(lwd=0.7)+
+  
+  geom_hline(yintercept = 0 , color = "black", size = 0.5, linetype = "dashed") + 
+  
+  labs(title = "Global Average Tropospheric Temperatures in layers", 
+       subtitle = "Average annual temperatures in Celsius from 1980 to 2024",
+       x = "Year", y = "Temperature (°C)") +
+  
+  scale_x_continuous(breaks = seq(1980, 2024, by = 10)) +
+
+  theme_minimal()+
+  
+  theme(plot.title = element_text(face = "bold"),
+         legend.position = "none") 
+```
+
+These graphs showcase global temperatures in different layers in the atmosphere from 1980 to 2024.
+
+```{r}
+
+# Ploting the average temperature of the four temperatures
+
+combined_data %>% 
+  
+  ggplot(aes(x = Year, y = Overall_Average))+
+  
+  geom_line(lwd=0.7, color = "navyblue")+
+  
+  geom_point()+
+  
+  geom_hline(yintercept = 0 , color = "black", size = 0.5, linetype = "dashed") + 
+  
+  labs(title = "Global Overall Average Tropospheric Temperatures", 
+       subtitle = "Average annual temperatures in Celsius from 1980 to 2024",
+       x = "Year", y = "Temperature (°C)") +
+  
+  scale_x_continuous(breaks = seq(1980, 2024, by = 5)) +
+
+  theme_minimal()+
+  
+  theme(plot.title = element_text(face = "bold"),
+         legend.position = "none") 
+```
+
+This graph shows the average global temperatures overall in the atmosphere from 1980 to 2024.
