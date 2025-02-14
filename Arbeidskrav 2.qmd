@@ -1,0 +1,140 @@
+---
+title: "Arbeidskrav 2"
+author: "Simon"
+format: html
+editor: visual
+---
+
+## Assignment 2
+
+```{r}
+rm(list=ls())
+
+library(tidyverse)
+library(lubridate)
+library(janitor)
+```
+
+**Task 1**
+
+```{r, warning=FALSE}
+url <- "https://raw.githubusercontent.com/uit-sok-1005-v23/uit-sok-1005-v23.github.io/main/storedata.csv"
+df <- read.csv(url)
+
+df <- df %>% 
+   mutate(Order_Date = as.Date(Order_Date, format="%Y-%m-%d"))
+```
+
+```{r}
+#1
+
+Table1 <-df %>% 
+  select(Order_Date ,Sales , Customer_Segment, Region) %>% 
+  filter(year(Order_Date) == 2017, 
+         month(Order_Date) %in% c(10, 11, 12), 
+         Region %in% c("Region 1", "Region 9"),
+         Customer_Segment %in% c("Corporate", "Consumer")) %>%
+  mutate(year_month = floor_date(Order_Date, unit = "month")) %>% 
+  group_by(year_month, Region) %>% 
+  summarise(total_sale = sum(Sales, na.rm=TRUE), .groups="drop") %>% 
+  pivot_wider(names_from = Region, values_from = total_sale) %>% 
+  print(table1)
+
+
+```
+
+```{r}
+#2
+
+Figure1 <-df %>% 
+  select(Order_Date ,Sales, Region) %>% 
+  mutate(year_month = floor_date(Order_Date, unit = "month")) %>%
+  group_by(year_month, Region) %>%
+  mutate(year = year(year_month)) %>%
+  filter(year %in% c(2015:2017)) %>%
+  filter(Region %in% c("Region 1", "Region 13")) %>% 
+  summarise(total_sale = sum(Sales, na.rm=TRUE), .groups="drop") %>% 
+  ggplot(aes(x = year_month, y = total_sale, color = Region))+
+  geom_line(lwd = 0.7)+
+  labs(title = "Total sales a month for Region 1 and 13",
+       x = "year",
+       y = "Total sales")+
+  theme_minimal()
+
+Figure1
+```
+
+```{r}
+#3
+
+Table2 <- df %>% 
+  select(Order_Date ,Sales, Region) %>% 
+  mutate(year_month = floor_date(Order_Date, unit = "month")) %>%
+  group_by(year_month, Region) %>%
+  mutate(year = year(year_month)) %>%
+  filter(year %in% c(2015:2017)) %>%
+  filter(Region %in% c("Region 1", "Region 13")) %>% 
+  summarise(total_sale = sum(Sales, na.rm=TRUE), .groups="drop") %>%
+  pivot_wider(names_from = Region, values_from = total_sale) %>% 
+  filter(`Region 13` > `Region 1`)
+
+Table2
+```
+
+```{r}
+#4
+
+ Table3 <- df %>% 
+  select(Order_Date, Customer_Segment, Product_Category, Profit, Region) %>% 
+  filter(year(Order_Date) == 2017, !Region %in% c(3, 5, 8)) %>%
+  group_by(Customer_Segment, Product_Category) %>%
+  summarise(Avg_Profit = mean(Profit, na.rm=TRUE), .groups="drop")
+  
+ Table3
+```
+
+Corporate Technology made the most profit for 2017.
+
+**Task 2**
+
+```{r}
+library(rvest)
+url <- "https://www.motor.no/aktuelt/motors-store-vintertest-av-rekkevidde-pa-elbiler/217132"
+webpage <- read_html(url)
+car_data <- html_table(html_nodes(webpage, "div table")[[1]], fill = TRUE)
+
+colnames(car_data) <- car_data[1, ]  # Første rad blir kolonnenavn
+car_data <- car_data[-1, ]  # Fjern første rad fra dataene
+
+car_data <- car_data %>% 
+    mutate(
+    `WLTP-tall` = as.numeric(str_extract(`WLTP-tall`, "\\d+")),
+    STOPP = as.numeric(str_extract(STOPP, "\\d+"))
+  )
+
+```
+
+```{r}
+car_data %>% 
+  ggplot(aes(x = `WLTP-tall`, y = STOPP))+
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  scale_x_continuous(breaks = seq(200, 600, by = 50)) +
+  scale_y_continuous(breaks = seq(200, 600, by = 50)) +
+  labs(title = "Sammenligning av WLTP og Faktisk Rekkevidde",
+        x = "WLTP Rekkevidde (km)", y = "Faktisk Stoppet Rekkevidde (km)") +
+  theme_bw()
+```
+
+```{r}
+lm_model <- lm(STOPP ~ `WLTP-tall`, data = car_data)
+
+ggplot(car_data, aes(x = `WLTP-tall`, y = STOPP)) +
+  geom_point() +  # Plotter datapunktene
+  geom_abline(slope = 1, intercept = 0, color = "red") +  # 45-graders linje
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Sammenligning av WLTP og Faktisk Rekkevidde",
+        x = "WLTP Rekkevidde (km)", y = "Faktisk Stoppet Rekkevidde (km)") +
+  theme_minimal()
+
+```
